@@ -1,9 +1,9 @@
 plugins {
-    alias(libs.plugins.arcana.android.library)
-    alias(libs.plugins.arcana.compose)
+    alias(libs.plugins.holobinder.android.library)
+    alias(libs.plugins.holobinder.compose)
 }
 
-android { namespace = "io.github.woojaeheo.arcanavault.core.designsystem" }
+android { namespace = "io.github.woojaeheo.holobinder.core.designsystem" }
 
 dependencies {
     implementation(platform(libs.androidx.compose.bom))

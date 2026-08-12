@@ -1,15 +1,15 @@
 plugins {
-    alias(libs.plugins.arcana.android.application)
-    alias(libs.plugins.arcana.compose)
+    alias(libs.plugins.holobinder.android.application)
+    alias(libs.plugins.holobinder.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
 }
 
 android {
-    namespace = "io.github.woojaeheo.arcanavault"
+    namespace = "io.github.woojaeheo.holobinder"
 
     defaultConfig {
-        applicationId = "io.github.woojaeheo.arcanavault"
+        applicationId = "io.github.woojaeheo.holobinder"
         versionCode = 1
         versionName = "1.0.0"
     }

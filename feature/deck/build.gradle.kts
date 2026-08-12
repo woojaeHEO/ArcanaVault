@@ -1,9 +1,9 @@
 plugins {
-    alias(libs.plugins.arcana.android.library)
-    alias(libs.plugins.arcana.compose)
+    alias(libs.plugins.holobinder.android.library)
+    alias(libs.plugins.holobinder.compose)
 }
 
-android { namespace = "io.github.woojaeheo.arcanavault.feature.deck" }
+android { namespace = "io.github.woojaeheo.holobinder.feature.deck" }
 
 dependencies {
     implementation(projects.core.model)

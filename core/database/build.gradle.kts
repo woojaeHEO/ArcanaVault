@@ -1,11 +1,11 @@
 plugins {
-    alias(libs.plugins.arcana.android.library)
+    alias(libs.plugins.holobinder.android.library)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.room)
 }
 
-android { namespace = "io.github.woojaeheo.arcanavault.core.database" }
+android { namespace = "io.github.woojaeheo.holobinder.core.database" }
 
 room { schemaDirectory("$projectDir/schemas") }
 

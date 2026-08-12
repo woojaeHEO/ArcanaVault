@@ -1,6 +1,6 @@
-plugins { alias(libs.plugins.arcana.android.library) }
+plugins { alias(libs.plugins.holobinder.android.library) }
 
-android { namespace = "io.github.woojaeheo.arcanavault.core.common" }
+android { namespace = "io.github.woojaeheo.holobinder.core.common" }
 
 dependencies {
     api(libs.androidx.lifecycle.viewmodel.ktx)

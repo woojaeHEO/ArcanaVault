@@ -2,11 +2,15 @@ plugins {
     `kotlin-dsl`
 }
 
-group = "io.github.woojaeheo.arcanavault.buildlogic"
+group = "io.github.woojaeheo.holobinder.buildlogic"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
+}
+
+kotlin {
+    jvmToolchain(17)
 }
 
 dependencies {
@@ -18,15 +22,15 @@ dependencies {
 gradlePlugin {
     plugins {
         register("androidApplication") {
-            id = "arcana.android.application"
+            id = "holobinder.android.application"
             implementationClass = "AndroidApplicationConventionPlugin"
         }
         register("androidLibrary") {
-            id = "arcana.android.library"
+            id = "holobinder.android.library"
             implementationClass = "AndroidLibraryConventionPlugin"
         }
         register("androidCompose") {
-            id = "arcana.android.compose"
+            id = "holobinder.android.compose"
             implementationClass = "AndroidComposeConventionPlugin"
         }
     }

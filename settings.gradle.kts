@@ -16,7 +16,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ArcanaVault"
+rootProject.name = "HoloBinder"
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 

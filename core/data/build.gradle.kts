@@ -1,10 +1,10 @@
 plugins {
-    alias(libs.plugins.arcana.android.library)
+    alias(libs.plugins.holobinder.android.library)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
 }
 
-android { namespace = "io.github.woojaeheo.arcanavault.core.data" }
+android { namespace = "io.github.woojaeheo.holobinder.core.data" }
 
 dependencies {
     api(projects.core.model)

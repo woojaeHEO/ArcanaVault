@@ -21,7 +21,7 @@ glance = "1.1.1"
 work = "2.11.2"
 junit = "4.13.2"
 turbine = "1.2.1"
-prismGlass = "1.1.1"
+prismGlass = "1.2.2"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core" }
@@ -82,6 +82,6 @@ hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 room = { id = "androidx.room", version.ref = "room" }
 
 # Convention plugins
-arcana-android-application = { id = "arcana.android.application" }
-arcana-android-library = { id = "arcana.android.library" }
-arcana-compose = { id = "arcana.android.compose" }
+holobinder-android-application = { id = "holobinder.android.application" }
+holobinder-android-library = { id = "holobinder.android.library" }
+holobinder-compose = { id = "holobinder.android.compose" }

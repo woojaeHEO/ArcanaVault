@@ -1,6 +1,6 @@
-# Arcana Vault
+# HoloBinder
 
-Arcana Vault is an offline-first Pokémon TCG card binder and deck workspace for Android. It combines a responsive Compose interface with local persistence and a public card API.
+HoloBinder is an offline-first Pokémon TCG card binder and deck workspace for Android. It combines a responsive Compose interface with local persistence and a public card API.
 
 ## Highlights
 
