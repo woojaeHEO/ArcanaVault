@@ -2,6 +2,7 @@ package io.github.woojaeheo.arcanavault.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,26 +40,34 @@ fun SettingsScreen(
     var gridDensity by remember(preferences.gridDensity) {
         mutableFloatStateOf(preferences.gridDensity.toFloat())
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)) {
-        Text("Settings", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(10.dp))
-        Column(Modifier.fillMaxWidth().glassSurface().padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            Text("Appearance", style = MaterialTheme.typography.titleLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ThemeMode.entries.forEach { mode ->
-                    FilterChip(selected = preferences.themeMode == mode, onClick = { onTheme(mode) }, label = { Text(mode.name) })
-                }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val expandedHeader = maxWidth >= 600.dp
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp, vertical = if (expandedHeader) 18.dp else 6.dp),
+        ) {
+            if (expandedHeader) {
+                Text("Settings", style = MaterialTheme.typography.headlineMedium)
+                Spacer(Modifier.height(10.dp))
             }
-            SettingSwitch("Dynamic color", preferences.dynamicColor, onDynamicColor)
-            SettingSwitch("Reduce motion", preferences.reducedMotion, onReducedMotion)
-            Text("Grid density · ${gridDensity.roundToInt()}")
-            Slider(
-                value = gridDensity,
-                onValueChange = { gridDensity = it },
-                onValueChangeFinished = { onGridDensity(gridDensity.roundToInt()) },
-                valueRange = 2f..5f,
-                steps = 2,
-            )
+            Column(Modifier.fillMaxWidth().glassSurface().padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                Text("Appearance", style = MaterialTheme.typography.titleLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ThemeMode.entries.forEach { mode ->
+                        FilterChip(selected = preferences.themeMode == mode, onClick = { onTheme(mode) }, label = { Text(mode.name) })
+                    }
+                }
+                SettingSwitch("Dynamic color", preferences.dynamicColor, onDynamicColor)
+                SettingSwitch("Reduce motion", preferences.reducedMotion, onReducedMotion)
+                Text("Grid density · ${gridDensity.roundToInt()}")
+                Slider(
+                    value = gridDensity,
+                    onValueChange = { gridDensity = it },
+                    onValueChangeFinished = { onGridDensity(gridDensity.roundToInt()) },
+                    valueRange = 2f..5f,
+                    steps = 2,
+                )
+            }
         }
     }
 }

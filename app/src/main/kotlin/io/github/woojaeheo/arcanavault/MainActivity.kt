@@ -195,23 +195,25 @@ private fun HoloTopBar(destination: ArcanaDestination) {
         ArcanaDestination.Settings -> "Studio Controls"
     }
     BoxWithConstraints(
-        modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 2.dp),
     ) {
         val compact = maxWidth < 600.dp
         val showStatus = maxWidth >= 520.dp
         Row(
             modifier = Modifier.fillMaxWidth()
-                .height(if (compact) 48.dp else 58.dp)
+                .height(if (compact) 44.dp else 58.dp)
                 .glassSurface(if (compact) 20.dp else 24.dp, MaterialTheme.colorScheme.surface)
                 .padding(horizontal = if (compact) 12.dp else 18.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(
-                modifier = Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = .16f), androidx.compose.foundation.shape.CircleShape)
-                    .padding(if (compact) 7.dp else 10.dp),
-            ) {
-                Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
+            if (!compact) {
+                Box(
+                    modifier = Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = .16f), androidx.compose.foundation.shape.CircleShape)
+                        .padding(10.dp),
+                ) {
+                    Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
+                }
             }
             Column(Modifier.weight(1f)) {
                 if (!compact) {

@@ -48,6 +48,8 @@ dependencies {
     implementation(libs.androidx.hilt.work)
     implementation(libs.hilt.android)
     implementation(libs.prism.glass)
+    implementation(libs.coil.core)
+    implementation(libs.coil.network.okhttp)
     ksp(libs.hilt.compiler)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

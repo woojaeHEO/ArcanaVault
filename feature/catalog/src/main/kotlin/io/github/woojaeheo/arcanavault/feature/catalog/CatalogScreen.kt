@@ -84,7 +84,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
+import io.github.woojaeheo.arcanavault.core.designsystem.ArcanaCardImage
+import io.github.woojaeheo.arcanavault.core.designsystem.ArcanaCardImageSize
 import io.github.woojaeheo.arcanavault.core.designsystem.LocalArcanaMotion
 import io.github.woojaeheo.arcanavault.core.designsystem.glassSurface
 import io.github.woojaeheo.arcanavault.core.model.Card
@@ -350,9 +351,10 @@ private fun HoloCard(card: Card, onClick: () -> Unit) {
             .padding(8.dp),
     ) {
         Box {
-            AsyncImage(
-                model = card.imageUrl,
+            ArcanaCardImage(
+                imageUrl = card.imageUrl,
                 contentDescription = card.name,
+                size = ArcanaCardImageSize.Grid,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxWidth().aspectRatio(.716f).clip(RoundedCornerShape(18.dp)),
             )
@@ -410,9 +412,10 @@ private fun CardDetail(
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Box(Modifier.fillMaxWidth().height(380.dp)) {
-                AsyncImage(
-                    model = card.largeImageUrl,
+                ArcanaCardImage(
+                    imageUrl = card.largeImageUrl,
                     contentDescription = card.name,
+                    size = ArcanaCardImageSize.Detail,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize(),
                 )

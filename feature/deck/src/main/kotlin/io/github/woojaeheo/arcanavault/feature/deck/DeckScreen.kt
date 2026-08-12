@@ -5,6 +5,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,44 +32,58 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import io.github.woojaeheo.arcanavault.core.designsystem.ArcanaCardImage
+import io.github.woojaeheo.arcanavault.core.designsystem.ArcanaCardImageSize
 import io.github.woojaeheo.arcanavault.core.designsystem.glassSurface
 import io.github.woojaeheo.arcanavault.core.model.DeckCard
 
 @Composable
 fun DeckScreen(deck: List<DeckCard>, onRemove: (String) -> Unit) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 10.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("My Deck", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
-            Text("${deck.sumOf { it.quantity }} / 60", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-        }
-        Spacer(Modifier.height(10.dp))
-        AnimatedContent(deck.isEmpty(), label = "deck-content") { empty ->
-            if (empty) EmptyDeck() else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(deck, key = { it.card.id }) { item ->
-                    Row(
-                        Modifier.fillMaxWidth().animateContentSize().clip(RoundedCornerShape(22.dp))
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = .65f)).padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        AsyncImage(
-                            item.card.imageUrl,
-                            item.card.name,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(58.dp, 84.dp).clip(RoundedCornerShape(10.dp)),
-                        )
-                        Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
-                            Text(item.card.name, fontWeight = FontWeight.Bold)
-                            Text(
-                                listOf(item.card.setName, item.card.types.joinToString(" · ")).filter(String::isNotBlank).joinToString("  /  "),
-                                style = MaterialTheme.typography.labelMedium,
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val expandedHeader = maxWidth >= 600.dp
+        Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = if (expandedHeader) 10.dp else 4.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (expandedHeader) {
+                    Text("My Deck", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
+                Text(
+                    "${deck.sumOf { it.quantity }} / 60",
+                    style = if (expandedHeader) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Spacer(Modifier.height(if (expandedHeader) 10.dp else 4.dp))
+            AnimatedContent(deck.isEmpty(), label = "deck-content") { empty ->
+                if (empty) EmptyDeck() else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(deck, key = { it.card.id }) { item ->
+                        Row(
+                            Modifier.fillMaxWidth().animateContentSize().clip(RoundedCornerShape(22.dp))
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = .65f)).padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            ArcanaCardImage(
+                                imageUrl = item.card.imageUrl,
+                                contentDescription = item.card.name,
+                                size = ArcanaCardImageSize.Deck,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(58.dp, 84.dp).clip(RoundedCornerShape(10.dp)),
                             )
+                            Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
+                                Text(item.card.name, fontWeight = FontWeight.Bold)
+                                Text(
+                                    listOf(item.card.setName, item.card.types.joinToString(" · ")).filter(String::isNotBlank).joinToString("  /  "),
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            }
+                            Text("×${item.quantity}", modifier = Modifier.background(MaterialTheme.colorScheme.primary.copy(.15f), CircleShape).padding(9.dp))
+                            IconButton(onClick = { onRemove(item.card.id) }) { Icon(Icons.Default.Delete, "한 장 제거") }
                         }
-                        Text("×${item.quantity}", modifier = Modifier.background(MaterialTheme.colorScheme.primary.copy(.15f), CircleShape).padding(9.dp))
-                        IconButton(onClick = { onRemove(item.card.id) }) { Icon(Icons.Default.Delete, "한 장 제거") }
                     }
                 }
             }
