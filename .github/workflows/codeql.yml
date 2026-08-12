@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: java-kotlin
       - uses: actions/setup-java@v4
@@ -28,4 +28,4 @@ jobs:
         run: sdkmanager "platforms;android-37.1" "build-tools;37.0.0"
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew assembleDebug
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4
