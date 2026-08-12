@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
+import java.util.concurrent.ConcurrentHashMap
 
 /** 화면의 단방향 MVI 계약 */
 interface MviContract<Action : Any, State : Any, Effect : Any> {
@@ -36,7 +37,7 @@ abstract class MviViewModel<Action : Any, State : Any, Effect : Any>(
     private val mutableState = MutableStateFlow(initialState)
     private val effectChannel = Channel<Effect>(capacity = Channel.BUFFERED)
     private val actionChannel = Channel<Action>(capacity = Channel.UNLIMITED)
-    private val keyedJobs = mutableMapOf<Any, Job>()
+    private val keyedJobs = ConcurrentHashMap<Any, Job>()
 
     final override val state: StateFlow<State> = mutableState.asStateFlow()
     final override val effects: Flow<Effect> = effectChannel.receiveAsFlow()
@@ -114,7 +115,7 @@ abstract class MviViewModel<Action : Any, State : Any, Effect : Any>(
     }
 
     final override fun onAction(action: Action) {
-        check(actionChannel.trySend(action).isSuccess) { "MVI action channel is closed." }
+        actionChannel.trySend(action)
     }
 
     override fun onCleared() {

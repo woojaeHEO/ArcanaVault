@@ -8,7 +8,6 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import javax.inject.Singleton
 
@@ -22,9 +21,7 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideCardApi(json: Json): CardApi {
-        val client = OkHttpClient.Builder()
-            .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC })
-            .build()
+        val client = OkHttpClient.Builder().build()
 
         return Retrofit.Builder()
             .baseUrl("https://api.tcgdex.net/")

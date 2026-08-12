@@ -11,7 +11,6 @@ dependencies {
     implementation(projects.core.model)
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.serialization)
-    implementation(libs.okhttp.logging)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

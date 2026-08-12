@@ -29,17 +29,18 @@ class RecommendationWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, parameters) {
     override suspend fun doWork(): Result {
         if (!hasWidget(applicationContext)) return Result.success()
-
-        val previous = RecommendationStore.read(applicationContext)
-        val card = getRecommendedCard(previous?.cardId)
-
-        if (card != null) {
-            val image = cacheCardImage(applicationContext, card.id, card.imageUrl)
-            RecommendationStore.write(applicationContext, card, System.currentTimeMillis(), image)
-            ArcanaWidget().updateAll(applicationContext)
+        return try {
+            val previous = RecommendationStore.read(applicationContext)
+            val card = getRecommendedCard(previous?.cardId)
+            if (card != null) {
+                val image = cacheCardImage(applicationContext, card.id, card.imageUrl)
+                RecommendationStore.write(applicationContext, card, System.currentTimeMillis(), image)
+                ArcanaWidget().updateAll(applicationContext)
+            }
+            Result.success()
+        } finally {
+            enqueueNext(applicationContext)
         }
-        enqueueNext(applicationContext)
-        return Result.success()
     }
 
     private fun cacheCardImage(context: Context, cardId: String, imageUrl: String) =

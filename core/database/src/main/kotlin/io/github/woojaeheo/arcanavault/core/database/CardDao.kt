@@ -11,11 +11,10 @@ import kotlinx.coroutines.flow.Flow
 interface CardDao {
     @Query(
         """SELECT * FROM cards
-            WHERE (:query = '' OR name LIKE '%' || :query || '%' OR description LIKE '%' || :query || '%')
+            WHERE (:query = '' OR INSTR(LOWER(name), LOWER(:query)) > 0 OR INSTR(LOWER(description), LOWER(:query)) > 0)
             AND (:type IS NULL OR types LIKE '%' || :type || '%')
             AND (:supertype IS NULL OR supertype = :supertype)
-            ORDER BY CASE WHEN :sort = 'Price' THEN price END DESC,
-                     CASE WHEN :sort = 'Newest' THEN releaseDate END DESC,
+            ORDER BY CASE WHEN :sort = 'RecentlyAdded' THEN updatedAt END DESC,
                      name ASC""",
     )
     fun observeCards(query: String, type: String?, supertype: String?, sort: String): Flow<List<CardEntity>>
@@ -64,4 +63,7 @@ interface DeckDao {
 
     @Query("SELECT quantity FROM deck_cards WHERE cardId = :cardId")
     suspend fun quantity(cardId: String): Int?
+
+    @Query("SELECT COALESCE(SUM(quantity), 0) FROM deck_cards")
+    suspend fun totalQuantity(): Int
 }

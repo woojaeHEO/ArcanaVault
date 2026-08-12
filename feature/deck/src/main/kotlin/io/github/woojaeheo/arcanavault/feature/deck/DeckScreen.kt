@@ -37,10 +37,15 @@ import io.github.woojaeheo.arcanavault.core.model.DeckCard
 
 @Composable
 fun DeckScreen(deck: List<DeckCard>, onRemove: (String) -> Unit) {
-    Column(Modifier.fillMaxSize().padding(18.dp)) {
-        Text("My Deck", style = MaterialTheme.typography.displayLarge)
-        Text("${deck.sumOf { it.quantity }} / 60 cards", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(18.dp))
+    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("My Deck", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+            Text("${deck.sumOf { it.quantity }} / 60", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(10.dp))
         AnimatedContent(deck.isEmpty(), label = "deck-content") { empty ->
             if (empty) EmptyDeck() else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(deck, key = { it.card.id }) { item ->

@@ -1,6 +1,7 @@
 package io.github.woojaeheo.arcanavault.core.data
 
 import io.github.woojaeheo.arcanavault.core.common.SyncResult
+import io.github.woojaeheo.arcanavault.core.common.runSuspendCatching
 import io.github.woojaeheo.arcanavault.core.database.CardDao
 import io.github.woojaeheo.arcanavault.core.database.CardEntity
 import io.github.woojaeheo.arcanavault.core.domain.RecommendationRepository
@@ -32,7 +33,7 @@ class OfflineFirstCardRepository @Inject constructor(
     private var lastRefreshAt: Long = 0L
 
     override fun observeCards(filter: CardFilter): Flow<List<Card>> =
-        cardDao.observeCards(filter.query, filter.type, filter.supertype, filter.sort.name)
+        cardDao.observeCards(filter.query.normalizedCardName(), filter.type, filter.supertype, filter.sort.name)
             .map { cards -> cards.map(CardEntity::asExternalModel) }
 
     override fun observeCard(id: String): Flow<Card?> =
@@ -47,13 +48,22 @@ class OfflineFirstCardRepository @Inject constructor(
         if (!force && now - lastRefreshAt < REFRESH_WINDOW && cardDao.count() > 0) {
             return SyncResult.Success
         }
-        return runCatching {
+        return runSuspendCatching {
             val cards = api.searchCards(
-                name = filter.query.trim().takeIf(String::isNotEmpty),
+                name = filter.query.normalizedCardName().takeIf(String::isNotEmpty),
                 type = filter.type,
                 category = filter.supertype,
             )
-            cardDao.upsertCards(cards.map { summary -> summary.asEntity(cardDao.card(summary.id), now) })
+            cardDao.upsertCards(
+                cards.map { summary ->
+                    summary.asEntity(
+                        existing = cardDao.card(summary.id),
+                        updatedAt = now,
+                        requestedType = filter.type,
+                        requestedSupertype = filter.supertype,
+                    )
+                },
+            )
             lastRefreshAt = now
         }.fold(
             onSuccess = { SyncResult.Success },
@@ -62,7 +72,7 @@ class OfflineFirstCardRepository @Inject constructor(
     }
 
     /** 선택된 카드만 고해상도 상세 정보로 갱신 */
-    override suspend fun refreshCard(id: String): SyncResult = runCatching {
+    override suspend fun refreshCard(id: String): SyncResult = runSuspendCatching {
         val existing = cardDao.card(id)
         cardDao.upsertCards(listOf(api.card(id).asEntity(existing?.isFavorite == true, System.currentTimeMillis())))
     }.fold(
@@ -88,13 +98,18 @@ class OfflineFirstCardRepository @Inject constructor(
     }
 }
 
-private fun CardSummaryDto.asEntity(existing: CardEntity?, updatedAt: Long) = CardEntity(
+private fun CardSummaryDto.asEntity(
+    existing: CardEntity?,
+    updatedAt: Long,
+    requestedType: String?,
+    requestedSupertype: String?,
+) = CardEntity(
     id = id,
     name = name,
-    supertype = existing?.supertype ?: "Pokemon",
+    supertype = existing?.supertype ?: requestedSupertype ?: "Pokemon",
     subtypes = existing?.subtypes.orEmpty(),
     hp = existing?.hp,
-    types = existing?.types.orEmpty(),
+    types = existing?.types?.takeIf(String::isNotBlank) ?: requestedType.orEmpty(),
     description = existing?.description.orEmpty(),
     weakness = existing?.weakness,
     retreatCost = existing?.retreatCost ?: 0,
@@ -172,3 +187,22 @@ fun CardEntity.asExternalModel() = Card(
 
 private const val FIELD_SEPARATOR = "\u001F"
 private fun String.toFieldList() = takeIf(String::isNotBlank)?.split(FIELD_SEPARATOR).orEmpty()
+
+private fun String.normalizedCardName(): String {
+    val query = trim()
+    return KOREAN_CARD_NAMES[query] ?: query
+}
+
+private val KOREAN_CARD_NAMES = mapOf(
+    "피카츄" to "Pikachu",
+    "라이츄" to "Raichu",
+    "리자몽" to "Charizard",
+    "파이리" to "Charmander",
+    "꼬부기" to "Squirtle",
+    "거북왕" to "Blastoise",
+    "이상해씨" to "Bulbasaur",
+    "이상해꽃" to "Venusaur",
+    "뮤" to "Mew",
+    "뮤츠" to "Mewtwo",
+    "이브이" to "Eevee",
+)

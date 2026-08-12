@@ -34,10 +34,10 @@ data class CardFilter(
     val query: String = "",
     val type: String? = null,
     val supertype: String? = null,
-    val sort: CardSort = CardSort.Newest,
+    val sort: CardSort = CardSort.RecentlyAdded,
 )
 
-enum class CardSort { Name, Price, Newest }
+enum class CardSort { Name, RecentlyAdded }
 
 /** 화면 테마 설정 */
 enum class ThemeMode { System, Light, Dark }
@@ -45,7 +45,7 @@ enum class ThemeMode { System, Light, Dark }
 /** 사용자 환경 설정 */
 data class UserPreferences(
     val themeMode: ThemeMode = ThemeMode.System,
-    val dynamicColor: Boolean = false,
+    val dynamicColor: Boolean = true,
     val reducedMotion: Boolean = false,
-    val gridDensity: Int = 3,
+    val gridDensity: Int = 2,
 )

@@ -4,13 +4,16 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.woojaeheo.arcanavault.core.model.ThemeMode
 import io.github.woojaeheo.arcanavault.core.model.UserPreferences
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,14 +31,20 @@ class UserPreferencesDataSource @Inject constructor(
     }
 
     /** 사용자 설정 스트림 */
-    val preferences: Flow<UserPreferences> = context.userPreferences.data.map { values ->
-        UserPreferences(
-            themeMode = values[Keys.theme]?.let(ThemeMode::valueOf) ?: ThemeMode.System,
-            dynamicColor = values[Keys.dynamicColor] ?: true,
-            reducedMotion = values[Keys.reducedMotion] ?: false,
-            gridDensity = values[Keys.gridDensity] ?: 2,
-        )
-    }
+    val preferences: Flow<UserPreferences> = context.userPreferences.data
+        .catch { throwable ->
+            if (throwable is IOException) emit(emptyPreferences()) else throw throwable
+        }
+        .map { values ->
+            UserPreferences(
+                themeMode = values[Keys.theme]
+                    ?.let { stored -> runCatching { ThemeMode.valueOf(stored) }.getOrNull() }
+                    ?: ThemeMode.System,
+                dynamicColor = values[Keys.dynamicColor] ?: true,
+                reducedMotion = values[Keys.reducedMotion] ?: false,
+                gridDensity = values[Keys.gridDensity] ?: 2,
+            )
+        }
 
     suspend fun setTheme(mode: ThemeMode) {
         context.userPreferences.edit { it[Keys.theme] = mode.name }

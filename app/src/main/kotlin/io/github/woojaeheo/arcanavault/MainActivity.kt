@@ -5,10 +5,12 @@ import android.content.Context
 import android.content.Intent
 import android.hardware.display.DisplayManager
 import android.os.Bundle
+import androidx.activity.compose.BackHandler
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -33,8 +35,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
@@ -50,7 +50,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -60,12 +63,14 @@ import androidx.window.layout.WindowLayoutInfo
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.woojaeheo.arcanavault.core.designsystem.ArcanaTheme
 import io.github.woojaeheo.arcanavault.core.designsystem.AuroraBackground
+import io.github.woojaeheo.arcanavault.core.designsystem.LocalArcanaMotion
 import io.github.woojaeheo.arcanavault.core.designsystem.glassSurface
 import io.github.woojaeheo.arcanavault.core.model.ThemeMode
 import io.github.woojaeheo.arcanavault.feature.catalog.CatalogRoute
 import io.github.woojaeheo.arcanavault.feature.deck.DeckScreen
 import io.github.woojaeheo.arcanavault.feature.favorites.FavoritesScreen
 import io.github.woojaeheo.arcanavault.feature.settings.SettingsScreen
+import io.github.woojaeheo.prismglass.PrismGlassNavigationBar
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -123,6 +128,9 @@ private fun ArcanaApp(
     onAction: (MainAction) -> Unit,
     onOpenExternalDisplay: () -> Unit,
 ) {
+    BackHandler(enabled = state.destination != ArcanaDestination.Catalog) {
+        onAction(MainAction.SelectDestination(ArcanaDestination.Catalog))
+    }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -187,24 +195,33 @@ private fun HoloTopBar(destination: ArcanaDestination) {
         ArcanaDestination.Settings -> "Studio Controls"
     }
     BoxWithConstraints(
-        modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp)
-            .height(64.dp).glassSurface(24.dp, MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 4.dp),
     ) {
+        val compact = maxWidth < 600.dp
         val showStatus = maxWidth >= 520.dp
         Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
+            modifier = Modifier.fillMaxWidth()
+                .height(if (compact) 48.dp else 58.dp)
+                .glassSurface(if (compact) 20.dp else 24.dp, MaterialTheme.colorScheme.surface)
+                .padding(horizontal = if (compact) 12.dp else 18.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Box(
                 modifier = Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = .16f), androidx.compose.foundation.shape.CircleShape)
-                    .padding(10.dp),
+                    .padding(if (compact) 7.dp else 10.dp),
             ) {
                 Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
             }
             Column(Modifier.weight(1f)) {
-                Text("ARCANA / POKÉMON TCG", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 1)
+                if (!compact) {
+                    Text("ARCANA / POKÉMON TCG", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                }
+                Text(
+                    title,
+                    style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
+                    maxLines = 1,
+                )
             }
             if (showStatus) {
                 Text(
@@ -220,19 +237,38 @@ private fun HoloTopBar(destination: ArcanaDestination) {
 
 @Composable
 private fun ArcanaNavigationBar(selected: ArcanaDestination, onSelect: (ArcanaDestination) -> Unit) {
-    NavigationBar(
-        Modifier.navigationBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp)
-            .glassSurface(28.dp, MaterialTheme.colorScheme.surface),
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-    ) {
-        destinations.forEach { item ->
-            NavigationBarItem(
-                selected = selected == item.destination,
-                onClick = { onSelect(item.destination) },
-                icon = { Icon(item.icon, item.label) },
-                label = { Text(item.label) },
-            )
-        }
+    val motion = LocalArcanaMotion.current
+    val selectedItem = destinations.first { it.destination == selected }
+    PrismGlassNavigationBar(
+        items = destinations,
+        selectedItem = selectedItem,
+        onItemSelected = { onSelect(it.destination) },
+        itemLabel = DestinationItem::label,
+        reducedMotion = motion.reduced,
+        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp),
+    ) { item, isSelected ->
+        val iconScale by animateFloatAsState(
+            targetValue = if (isSelected) 1.12f else .94f,
+            animationSpec = motion.springSpec(),
+            label = "navigation-icon-scale",
+        )
+        Icon(
+            item.icon,
+            null,
+            tint = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.graphicsLayer {
+                scaleX = iconScale
+                scaleY = iconScale
+            },
+        )
+        Text(
+            item.label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

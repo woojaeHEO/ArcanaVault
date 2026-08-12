@@ -59,11 +59,11 @@ class MainViewModel @Inject constructor(
     override suspend fun handleAction(action: MainAction) {
         when (action) {
             is MainAction.SelectDestination -> destination.value = action.destination
-            is MainAction.RemoveFromDeck -> intent { deckRepository.remove(action.id) }
-            is MainAction.Theme -> intent { settings.setTheme(action.mode) }
-            is MainAction.DynamicColor -> intent { settings.setDynamicColor(action.enabled) }
-            is MainAction.ReducedMotion -> intent { settings.setReducedMotion(action.enabled) }
-            is MainAction.GridDensity -> intent { settings.setGridDensity(action.columns) }
+            is MainAction.RemoveFromDeck -> deckRepository.remove(action.id)
+            is MainAction.Theme -> settings.setTheme(action.mode)
+            is MainAction.DynamicColor -> settings.setDynamicColor(action.enabled)
+            is MainAction.ReducedMotion -> settings.setReducedMotion(action.enabled)
+            is MainAction.GridDensity -> settings.setGridDensity(action.columns)
         }
     }
 }

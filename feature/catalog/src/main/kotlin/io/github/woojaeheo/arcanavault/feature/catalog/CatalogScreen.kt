@@ -1,5 +1,6 @@
 package io.github.woojaeheo.arcanavault.feature.catalog
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -60,7 +61,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,7 +74,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -102,12 +112,17 @@ private fun CatalogScreen(
     preferredDensity: Int,
     onAction: (CatalogAction) -> Unit,
 ) {
+    BackHandler(enabled = state.selectedCard != null) {
+        onAction(CatalogAction.Select(null))
+    }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val showSupportingPane = maxWidth >= 940.dp
+        val compactHeader = maxWidth < 600.dp
         Row(Modifier.fillMaxSize()) {
             CatalogPane(
                 state = state,
                 density = preferredDensity,
+                compactHeader = compactHeader,
                 onAction = onAction,
                 modifier = Modifier.weight(if (showSupportingPane) .64f else 1f),
             )
@@ -146,25 +161,62 @@ private fun CatalogScreen(
 private fun CatalogPane(
     state: CatalogState,
     density: Int,
+    compactHeader: Boolean,
     onAction: (CatalogAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusManager = LocalFocusManager.current
     Column(modifier.padding(horizontal = 16.dp)) {
-        DiscoveryHero(
-            cardCount = state.cards.size,
-            refreshing = state.isRefreshing,
-            onSurprise = { onAction(CatalogAction.SurpriseMe) },
-        )
+        if (!compactHeader) {
+            DiscoveryHero(
+                cardCount = state.cards.size,
+                refreshing = state.isRefreshing,
+                onSurprise = { onAction(CatalogAction.SurpriseMe) },
+            )
+        }
+        var searchValue by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+            mutableStateOf(TextFieldValue(state.filter.query, TextRange(state.filter.query.length)))
+        }
+        LaunchedEffect(state.filter.query) {
+            if (searchValue.text != state.filter.query) {
+                searchValue = TextFieldValue(
+                    text = state.filter.query,
+                    selection = TextRange(state.filter.query.length),
+                )
+            }
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
-                value = state.filter.query,
-                onValueChange = { onAction(CatalogAction.Search(it)) },
+                value = searchValue,
+                onValueChange = { value ->
+                    searchValue = value
+                    onAction(CatalogAction.Search(value.text))
+                },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
-                placeholder = { Text("피카츄, 리자몽, 세트 검색") },
+                trailingIcon = if (searchValue.text.isNotEmpty()) {
+                    {
+                        IconButton(
+                            onClick = {
+                                searchValue = TextFieldValue("")
+                                onAction(CatalogAction.Search(""))
+                            },
+                        ) {
+                            Icon(Icons.Default.Close, "검색어 지우기")
+                        }
+                    }
+                } else null,
+                placeholder = { Text("카드 이름 검색", maxLines = 1) },
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                 shape = RoundedCornerShape(24.dp),
                 modifier = Modifier.weight(1f),
             )
+            if (compactHeader) {
+                FilledTonalIconButton(onClick = { onAction(CatalogAction.SurpriseMe) }) {
+                    Icon(Icons.Default.AutoAwesome, "행운의 카드 뽑기")
+                }
+            }
             IconButton(onClick = { onAction(CatalogAction.Refresh) }) {
                 Icon(Icons.Default.Refresh, "새로고침")
             }
@@ -201,10 +253,10 @@ private fun CatalogPane(
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(
                     minSize = when (density.coerceIn(2, 5)) {
-                        2 -> 190.dp
-                        3 -> 164.dp
-                        4 -> 140.dp
-                        else -> 120.dp
+                        2 -> 178.dp
+                        3 -> 146.dp
+                        4 -> 126.dp
+                        else -> 112.dp
                     },
                 ),
                 contentPadding = PaddingValues(bottom = 112.dp),
@@ -250,10 +302,19 @@ private fun DiscoveryHero(
     ) {
         Column(Modifier.weight(1f)) {
             Text("HOLO INDEX", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Text("오늘의 카드 아카이브", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+            Text(
+                "오늘의 카드 아카이브",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+            )
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(cardCount.toString().padStart(2, '0'), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+            Text(
+                cardCount.toString().padStart(2, '0'),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Black,
+            )
             Text(if (refreshing) "SYNCING" else "OFFLINE READY", style = MaterialTheme.typography.labelSmall)
         }
         Spacer(Modifier.width(10.dp))
