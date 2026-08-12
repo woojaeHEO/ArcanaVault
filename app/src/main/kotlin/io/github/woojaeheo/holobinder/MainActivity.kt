@@ -206,6 +206,7 @@ private fun HoloBinderApp(
                     style = surfaceStyle,
                     blurRadius = 18.dp,
                     refraction = .12f,
+                    clipContent = false,
                     modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
                         .padding(horizontal = 12.dp, vertical = 6.dp).fillMaxWidth().height(64.dp),
                 ) {
