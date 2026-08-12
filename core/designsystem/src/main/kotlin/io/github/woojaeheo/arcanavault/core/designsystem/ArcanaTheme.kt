@@ -18,6 +18,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -77,11 +78,37 @@ fun Modifier.glassSurface(
 ): Modifier {
     val shape = RoundedCornerShape(radius)
     return this
+        .shadow(
+            elevation = 18.dp,
+            shape = shape,
+            ambientColor = tint.copy(alpha = .18f),
+            spotColor = Color.Black.copy(alpha = .28f),
+        )
         .clip(shape)
         .background(
             Brush.linearGradient(
-                listOf(tint.copy(alpha = 0.20f), tint.copy(alpha = 0.055f)),
+                listOf(
+                    Color.White.copy(alpha = .24f),
+                    tint.copy(alpha = .13f),
+                    tint.copy(alpha = .055f),
+                ),
             ),
         )
-        .border(1.dp, Color.White.copy(alpha = 0.28f), shape)
+        .background(
+            Brush.radialGradient(
+                listOf(Color.White.copy(alpha = .16f), Color.Transparent),
+                radius = 720f,
+            ),
+        )
+        .border(
+            width = 1.dp,
+            brush = Brush.linearGradient(
+                listOf(
+                    Color.White.copy(alpha = .58f),
+                    tint.copy(alpha = .12f),
+                    Color.White.copy(alpha = .22f),
+                ),
+            ),
+            shape = shape,
+        )
 }

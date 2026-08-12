@@ -1,9 +1,8 @@
 package io.github.woojaeheo.arcanavault.feature.catalog
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.woojaeheo.arcanavault.core.common.MviContract
+import io.github.woojaeheo.arcanavault.core.common.MviViewModel
 import io.github.woojaeheo.arcanavault.core.common.SyncResult
 import io.github.woojaeheo.arcanavault.core.data.CardRepository
 import io.github.woojaeheo.arcanavault.core.data.DeckRepository
@@ -12,18 +11,12 @@ import io.github.woojaeheo.arcanavault.core.model.CardFilter
 import io.github.woojaeheo.arcanavault.core.model.CardSort
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -35,6 +28,7 @@ sealed interface CatalogAction {
     data class Select(val card: Card?) : CatalogAction
     data class ToggleFavorite(val id: String) : CatalogAction
     data class AddToDeck(val id: String) : CatalogAction
+    data object SurpriseMe : CatalogAction
     data object Refresh : CatalogAction
 }
 
@@ -55,36 +49,37 @@ sealed interface CatalogEffect {
 class CatalogViewModel @Inject constructor(
     private val cardRepository: CardRepository,
     private val deckRepository: DeckRepository,
-) : ViewModel(), MviContract<CatalogAction, CatalogState, CatalogEffect> {
+) : MviViewModel<CatalogAction, CatalogState, CatalogEffect>(CatalogState()) {
     private val filter = MutableStateFlow(CardFilter())
-    private val localState = MutableStateFlow(CatalogState())
-    private val effectChannel = Channel<CatalogEffect>(Channel.BUFFERED)
 
     private val cards = filter
         .debounce(250)
         .flatMapLatest(cardRepository::observeCards)
 
-    override val state: StateFlow<CatalogState> = combine(localState, filter, cards) { local, activeFilter, items ->
-        local.copy(
-            cards = items,
-            filter = activeFilter,
-            selectedCard = local.selectedCard?.let { selected -> items.firstOrNull { it.id == selected.id } ?: selected },
-            isLoading = false,
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CatalogState())
-
-    override val effects = effectChannel.receiveAsFlow()
-
     init {
         refresh(force = false)
         viewModelScope.launch {
+            cards.collectLatest { items ->
+                setState {
+                    copy(
+                        cards = items,
+                        filter = this@CatalogViewModel.filter.value,
+                        selectedCard = selectedCard?.let { selected -> items.firstOrNull { it.id == selected.id } ?: selected },
+                        isLoading = false,
+                    )
+                }
+            }
+        }
+        viewModelScope.launch {
             filter.drop(1).debounce(350).distinctUntilChanged().collectLatest { activeFilter ->
+                setState { copy(filter = activeFilter) }
                 refreshFilter(activeFilter, force = true)
             }
         }
     }
 
-    override fun onAction(action: CatalogAction) {
+    /** 카탈로그 입력 처리 */
+    override suspend fun handleAction(action: CatalogAction) {
         when (action) {
             is CatalogAction.Search -> {
                 filter.update { it.copy(query = action.query) }
@@ -96,20 +91,29 @@ class CatalogViewModel @Inject constructor(
                 filter.update { it.copy(sort = action.sort) }
             }
             is CatalogAction.Select -> {
-                localState.update { it.copy(selectedCard = action.card) }
+                setState { copy(selectedCard = action.card) }
                 action.card?.let { card ->
-                    viewModelScope.launch {
+                    latestIntent(DETAIL_JOB) {
                         val result = cardRepository.refreshCard(card.id)
                         if (result is SyncResult.Error) {
-                            effectChannel.send(CatalogEffect.Message(result.message))
+                            emitEffect(CatalogEffect.Message(result.message))
                         }
                     }
                 }
             }
-            is CatalogAction.ToggleFavorite -> viewModelScope.launch { cardRepository.toggleFavorite(action.id) }
-            is CatalogAction.AddToDeck -> viewModelScope.launch {
+            is CatalogAction.ToggleFavorite -> intent { cardRepository.toggleFavorite(action.id) }
+            is CatalogAction.AddToDeck -> intent {
                 deckRepository.add(action.id)
-                effectChannel.send(CatalogEffect.Message("덱에 카드를 추가했습니다."))
+                emitEffect(CatalogEffect.Message("덱에 카드를 추가했습니다."))
+            }
+            CatalogAction.SurpriseMe -> {
+                val card = currentState().cards.randomOrNull()
+                if (card == null) {
+                    emitEffect(CatalogEffect.Message("추천할 카드를 불러오는 중입니다."))
+                } else {
+                    setState { copy(selectedCard = card) }
+                    emitEffect(CatalogEffect.Message("오늘의 행운 카드는 ${card.name}입니다."))
+                }
             }
             CatalogAction.Refresh -> refresh(force = true)
         }
@@ -120,11 +124,15 @@ class CatalogViewModel @Inject constructor(
     }
 
     private suspend fun refreshFilter(activeFilter: CardFilter, force: Boolean) {
-        localState.update { it.copy(isRefreshing = true) }
+        setState { copy(isRefreshing = true) }
         when (val result = cardRepository.refresh(activeFilter, force)) {
             SyncResult.Success -> Unit
-            is SyncResult.Error -> effectChannel.send(CatalogEffect.Message(result.message))
+            is SyncResult.Error -> emitEffect(CatalogEffect.Message(result.message))
         }
-        localState.update { it.copy(isRefreshing = false) }
+        setState { copy(isRefreshing = false) }
+    }
+
+    private companion object {
+        const val DETAIL_JOB = "card-detail"
     }
 }

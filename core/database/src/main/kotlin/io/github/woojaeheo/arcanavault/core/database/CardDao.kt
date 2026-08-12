@@ -43,6 +43,12 @@ interface CardDao {
 
     @Query("SELECT * FROM cards WHERE isFavorite = 1 ORDER BY updatedAt DESC LIMIT 1")
     suspend fun latestFavorite(): CardEntity?
+
+    @Query("SELECT * FROM cards ORDER BY RANDOM() LIMIT 1")
+    suspend fun randomCard(): CardEntity?
+
+    @Query("SELECT * FROM cards WHERE id != :excludedId ORDER BY RANDOM() LIMIT 1")
+    suspend fun randomCardExcluding(excludedId: String): CardEntity?
 }
 
 @Dao

@@ -11,7 +11,8 @@ Arcana Vault is an offline-first Pokémon TCG card binder and deck workspace for
 - Phone navigation bar and tablet/foldable navigation rail
 - List-detail layouts for large and connected displays
 - Fold posture awareness through Jetpack WindowManager
-- Resizable Glance home-screen and lock-screen widget
+- Responsive Glance widget with a bitmap-rendered Pretendard type system
+- Five-minute recommended-card refresh through a resilient WorkManager chain
 - Dynamic color, dark mode, reduced motion, and edge-to-edge UI
 - Animated aurora surfaces and translucent glass styling
 
@@ -21,13 +22,16 @@ The project follows a Now in Android-style convention-plugin and multi-module st
 
 ```text
 app
-├── core:common, model, network, database, datastore, data
+├── core:common, model, domain, data
+├── core:network, database, datastore
 ├── core:designsystem
 ├── feature:catalog, deck, favorites, settings
 └── widget
 ```
 
-Room is the local source of truth. Network responses are cached before the UI observes them, while user preferences remain isolated in DataStore. Feature state follows an Action → Reducer → State/Effect flow.
+Room is the local source of truth. Network responses are cached before the UI observes them, while user preferences remain isolated in DataStore. Domain use cases own recommendation rules and feature state follows an Action → Reducer → State/Effect flow.
+
+The widget selects a different cached card when possible. Android may defer the requested five-minute refresh while the device is idle or battery restrictions are active.
 
 ## Build
 
@@ -40,6 +44,8 @@ Requirements: Android Studio with JDK 17 and Android SDK 37.1.
 ## Data source
 
 Card metadata is provided by the [TCGdex API](https://tcgdex.dev/rest). The app caches list responses and loads high-resolution detail only when needed. Pokémon names, artwork, and related properties belong to their respective rights holders.
+
+Pretendard is distributed under the SIL Open Font License 1.1. Its license text is bundled with the design-system resources.
 
 ## License
 

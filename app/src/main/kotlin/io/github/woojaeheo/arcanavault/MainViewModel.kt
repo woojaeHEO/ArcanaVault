@@ -1,9 +1,8 @@
 package io.github.woojaeheo.arcanavault
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.woojaeheo.arcanavault.core.common.MviContract
+import io.github.woojaeheo.arcanavault.core.common.MviViewModel
 import io.github.woojaeheo.arcanavault.core.data.CardRepository
 import io.github.woojaeheo.arcanavault.core.data.DeckRepository
 import io.github.woojaeheo.arcanavault.core.data.SettingsRepository
@@ -11,13 +10,7 @@ import io.github.woojaeheo.arcanavault.core.model.Card
 import io.github.woojaeheo.arcanavault.core.model.DeckCard
 import io.github.woojaeheo.arcanavault.core.model.ThemeMode
 import io.github.woojaeheo.arcanavault.core.model.UserPreferences
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -46,29 +39,31 @@ class MainViewModel @Inject constructor(
     private val settings: SettingsRepository,
     private val deckRepository: DeckRepository,
     cardRepository: CardRepository,
-) : ViewModel(), MviContract<MainAction, MainState, MainEffect> {
+) : MviViewModel<MainAction, MainState, MainEffect>(MainState()) {
     private val destination = kotlinx.coroutines.flow.MutableStateFlow(ArcanaDestination.Catalog)
-    private val effectChannel = Channel<MainEffect>(Channel.BUFFERED)
 
-    override val state: StateFlow<MainState> = combine(
-        destination,
-        settings.preferences,
-        deckRepository.deck,
-        cardRepository.observeFavorites(),
-    ) { selected, preferences, deck, favorites ->
-        MainState(selected, preferences, deck, favorites)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainState())
+    init {
+        viewModelScope.launch {
+            combine(
+                destination,
+                settings.preferences,
+                deckRepository.deck,
+                cardRepository.observeFavorites(),
+            ) { selected, preferences, deck, favorites ->
+                MainState(selected, preferences, deck, favorites)
+            }.collect { latest -> setState { latest } }
+        }
+    }
 
-    override val effects: Flow<MainEffect> = effectChannel.receiveAsFlow()
-
-    override fun onAction(action: MainAction) {
+    /** 앱 입력 처리 */
+    override suspend fun handleAction(action: MainAction) {
         when (action) {
             is MainAction.SelectDestination -> destination.value = action.destination
-            is MainAction.RemoveFromDeck -> viewModelScope.launch { deckRepository.remove(action.id) }
-            is MainAction.Theme -> viewModelScope.launch { settings.setTheme(action.mode) }
-            is MainAction.DynamicColor -> viewModelScope.launch { settings.setDynamicColor(action.enabled) }
-            is MainAction.ReducedMotion -> viewModelScope.launch { settings.setReducedMotion(action.enabled) }
-            is MainAction.GridDensity -> viewModelScope.launch { settings.setGridDensity(action.columns) }
+            is MainAction.RemoveFromDeck -> intent { deckRepository.remove(action.id) }
+            is MainAction.Theme -> intent { settings.setTheme(action.mode) }
+            is MainAction.DynamicColor -> intent { settings.setDynamicColor(action.enabled) }
+            is MainAction.ReducedMotion -> intent { settings.setReducedMotion(action.enabled) }
+            is MainAction.GridDensity -> intent { settings.setGridDensity(action.columns) }
         }
     }
 }

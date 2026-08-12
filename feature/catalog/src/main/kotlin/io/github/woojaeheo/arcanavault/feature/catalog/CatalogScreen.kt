@@ -7,6 +7,11 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -60,6 +65,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -144,7 +150,11 @@ private fun CatalogPane(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.padding(horizontal = 16.dp)) {
-        DiscoveryHero(cardCount = state.cards.size, refreshing = state.isRefreshing)
+        DiscoveryHero(
+            cardCount = state.cards.size,
+            refreshing = state.isRefreshing,
+            onSurprise = { onAction(CatalogAction.SurpriseMe) },
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = state.filter.query,
@@ -191,10 +201,10 @@ private fun CatalogPane(
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(
                     minSize = when (density.coerceIn(2, 5)) {
-                        2 -> 224.dp
-                        3 -> 184.dp
-                        4 -> 152.dp
-                        else -> 132.dp
+                        2 -> 190.dp
+                        3 -> 164.dp
+                        4 -> 140.dp
+                        else -> 120.dp
                     },
                 ),
                 contentPadding = PaddingValues(bottom = 112.dp),
@@ -216,7 +226,11 @@ private fun CatalogPane(
 }
 
 @Composable
-private fun DiscoveryHero(cardCount: Int, refreshing: Boolean) {
+private fun DiscoveryHero(
+    cardCount: Int,
+    refreshing: Boolean,
+    onSurprise: () -> Unit,
+) {
     val shape = RoundedCornerShape(28.dp)
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 14.dp)
@@ -241,6 +255,10 @@ private fun DiscoveryHero(cardCount: Int, refreshing: Boolean) {
         Column(horizontalAlignment = Alignment.End) {
             Text(cardCount.toString().padStart(2, '0'), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
             Text(if (refreshing) "SYNCING" else "OFFLINE READY", style = MaterialTheme.typography.labelSmall)
+        }
+        Spacer(Modifier.width(10.dp))
+        FilledTonalIconButton(onClick = onSurprise) {
+            Icon(Icons.Default.AutoAwesome, "행운의 카드 뽑기")
         }
     }
 }
@@ -313,6 +331,14 @@ private fun CardDetail(
     modifier: Modifier = Modifier,
 ) {
     if (card == null) return
+    val motion = LocalArcanaMotion.current
+    val shimmer = rememberInfiniteTransition(label = "detail-holo")
+    val shimmerPhase by shimmer.animateFloat(
+        initialValue = -1f,
+        targetValue = if (motion.reduced) -1f else 2f,
+        animationSpec = infiniteRepeatable(tween(2_800), RepeatMode.Restart),
+        label = "detail-holo-phase",
+    )
     Column(modifier.glassSurface(32.dp, MaterialTheme.colorScheme.surface).padding(18.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -322,12 +348,28 @@ private fun CardDetail(
             IconButton(onClick = onClose) { Icon(Icons.Default.Close, "닫기") }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            AsyncImage(
-                model = card.largeImageUrl,
-                contentDescription = card.name,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxWidth().height(380.dp),
-            )
+            Box(Modifier.fillMaxWidth().height(380.dp)) {
+                AsyncImage(
+                    model = card.largeImageUrl,
+                    contentDescription = card.name,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.White.copy(alpha = .20f),
+                                MaterialTheme.colorScheme.tertiary.copy(alpha = .18f),
+                                Color.Transparent,
+                            ),
+                            start = Offset(shimmerPhase * 520f, 0f),
+                            end = Offset(shimmerPhase * 520f + 170f, 380f),
+                        ),
+                    ),
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 12.dp)) {
                 card.types.forEach { StatPill(it.uppercase()) }
                 card.hp?.let { StatPill("HP $it") }

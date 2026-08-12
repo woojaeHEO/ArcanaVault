@@ -220,7 +220,11 @@ private fun HoloTopBar(destination: ArcanaDestination) {
 
 @Composable
 private fun ArcanaNavigationBar(selected: ArcanaDestination, onSelect: (ArcanaDestination) -> Unit) {
-    NavigationBar(Modifier.navigationBarsPadding(), containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .78f)) {
+    NavigationBar(
+        Modifier.navigationBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp)
+            .glassSurface(28.dp, MaterialTheme.colorScheme.surface),
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+    ) {
         destinations.forEach { item ->
             NavigationBarItem(
                 selected = selected == item.destination,
@@ -238,7 +242,10 @@ private fun ArcanaNavigationRail(
     onOpenExternalDisplay: () -> Unit,
     onSelect: (ArcanaDestination) -> Unit,
 ) {
-    NavigationRail(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .58f)) {
+    NavigationRail(
+        modifier = Modifier.padding(10.dp).glassSurface(30.dp, MaterialTheme.colorScheme.surface),
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+    ) {
         destinations.forEach { item ->
             NavigationRailItem(
                 selected = selected == item.destination,

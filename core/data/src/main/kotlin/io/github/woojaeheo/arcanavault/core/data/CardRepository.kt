@@ -3,6 +3,7 @@ package io.github.woojaeheo.arcanavault.core.data
 import io.github.woojaeheo.arcanavault.core.common.SyncResult
 import io.github.woojaeheo.arcanavault.core.database.CardDao
 import io.github.woojaeheo.arcanavault.core.database.CardEntity
+import io.github.woojaeheo.arcanavault.core.domain.RecommendationRepository
 import io.github.woojaeheo.arcanavault.core.model.Card
 import io.github.woojaeheo.arcanavault.core.model.CardFilter
 import io.github.woojaeheo.arcanavault.core.network.CardApi
@@ -27,7 +28,7 @@ interface CardRepository {
 class OfflineFirstCardRepository @Inject constructor(
     private val api: CardApi,
     private val cardDao: CardDao,
-) : CardRepository {
+) : CardRepository, RecommendationRepository {
     private var lastRefreshAt: Long = 0L
 
     override fun observeCards(filter: CardFilter): Flow<List<Card>> =
@@ -72,6 +73,15 @@ class OfflineFirstCardRepository @Inject constructor(
     override suspend fun toggleFavorite(id: String) = cardDao.toggleFavorite(id)
 
     override suspend fun latestFavorite(): Card? = cardDao.latestFavorite()?.asExternalModel()
+
+    override suspend fun randomCard(excludedId: String?): Card? {
+        val cached = excludedId?.let { cardDao.randomCardExcluding(it) } ?: cardDao.randomCard()
+        cached?.let { return it.asExternalModel() }
+        refresh(CardFilter(), force = true)
+        val refreshed = excludedId?.let { cardDao.randomCardExcluding(it) } ?: cardDao.randomCard()
+        if (refreshed != null) return refreshed.asExternalModel()
+        return if (excludedId == null) null else cardDao.card(excludedId)?.asExternalModel()
+    }
 
     private companion object {
         const val REFRESH_WINDOW = 30 * 60 * 1_000L
