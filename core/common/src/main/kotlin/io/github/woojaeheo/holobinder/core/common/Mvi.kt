@@ -36,7 +36,7 @@ abstract class MviViewModel<Action : Any, State : Any, Effect : Any>(
 ) : ViewModel(), MviContract<Action, State, Effect> {
     private val mutableState = MutableStateFlow(initialState)
     private val effectChannel = Channel<Effect>(capacity = Channel.BUFFERED)
-    private val actionChannel = Channel<Action>(capacity = Channel.UNLIMITED)
+    private val actionChannel = Channel<Action>(capacity = Channel.BUFFERED)
     private val keyedJobs = ConcurrentHashMap<Any, Job>()
 
     final override val state: StateFlow<State> = mutableState.asStateFlow()
@@ -95,6 +95,11 @@ abstract class MviViewModel<Action : Any, State : Any, Effect : Any>(
         return job
     }
 
+    /** 지정한 키의 진행 중인 작업 취소 */
+    protected fun cancelIntent(key: Any) {
+        keyedJobs.remove(key)?.cancel()
+    }
+
     /** 결과 콜백이 있는 비동기 작업 실행 */
     protected fun <T> execute(
         key: Any? = null,
@@ -115,7 +120,9 @@ abstract class MviViewModel<Action : Any, State : Any, Effect : Any>(
     }
 
     final override fun onAction(action: Action) {
-        actionChannel.trySend(action)
+        if (actionChannel.trySend(action).isFailure) {
+            viewModelScope.launch { actionChannel.send(action) }
+        }
     }
 
     override fun onCleared() {

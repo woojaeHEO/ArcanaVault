@@ -12,6 +12,8 @@ import io.github.woojaeheo.holobinder.core.network.CardDetailDto
 import io.github.woojaeheo.holobinder.core.network.CardSummaryDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,7 +32,8 @@ class OfflineFirstCardRepository @Inject constructor(
     private val api: CardApi,
     private val cardDao: CardDao,
 ) : CardRepository, RecommendationRepository {
-    private var lastRefreshAt: Long = 0L
+    private val refreshMutex = Mutex()
+    private val refreshTimes = LinkedHashMap<CardFilter, Long>()
 
     override fun observeCards(filter: CardFilter): Flow<List<Card>> =
         cardDao.observeCards(filter.query.normalizedCardName(), filter.type, filter.supertype, filter.sort.name)
@@ -43,9 +46,10 @@ class OfflineFirstCardRepository @Inject constructor(
         cardDao.observeFavorites().map { cards -> cards.map(CardEntity::asExternalModel) }
 
     /** 목록 응답을 Room에 저장하고 상세 필드는 보존 */
-    override suspend fun refresh(filter: CardFilter, force: Boolean): SyncResult {
+    override suspend fun refresh(filter: CardFilter, force: Boolean): SyncResult = refreshMutex.withLock {
         val now = System.currentTimeMillis()
-        if (!force && now - lastRefreshAt < REFRESH_WINDOW && cardDao.count() > 0) {
+        val lastRefreshAt = refreshTimes[filter] ?: 0L
+        if (!force && now - lastRefreshAt in 0 until REFRESH_WINDOW && cardDao.count() > 0) {
             return SyncResult.Success
         }
         return runSuspendCatching {
@@ -64,7 +68,10 @@ class OfflineFirstCardRepository @Inject constructor(
                     ).takeIf { it.imageUrl.isNotBlank() }
                 },
             )
-            lastRefreshAt = now
+            refreshTimes[filter] = now
+            while (refreshTimes.size > REFRESH_KEY_LIMIT) {
+                refreshTimes.remove(refreshTimes.keys.first())
+            }
         }.fold(
             onSuccess = { SyncResult.Success },
             onFailure = { SyncResult.Error(it.message ?: "카드 정보를 불러오지 못했습니다.") },
@@ -74,7 +81,7 @@ class OfflineFirstCardRepository @Inject constructor(
     /** 선택된 카드만 고해상도 상세 정보로 갱신 */
     override suspend fun refreshCard(id: String): SyncResult = runSuspendCatching {
         val existing = cardDao.card(id)
-        cardDao.upsertCards(listOf(api.card(id).asEntity(existing?.isFavorite == true, System.currentTimeMillis())))
+        cardDao.upsertCards(listOf(api.card(id).asEntity(existing, System.currentTimeMillis())))
     }.fold(
         onSuccess = { SyncResult.Success },
         onFailure = { SyncResult.Error(it.message ?: "상세 정보를 불러오지 못했습니다.") },
@@ -95,6 +102,7 @@ class OfflineFirstCardRepository @Inject constructor(
 
     private companion object {
         const val REFRESH_WINDOW = 30 * 60 * 1_000L
+        const val REFRESH_KEY_LIMIT = 16
     }
 }
 
@@ -126,7 +134,7 @@ private fun CardSummaryDto.asEntity(
     updatedAt = updatedAt,
 )
 
-private fun CardDetailDto.asEntity(isFavorite: Boolean, updatedAt: Long): CardEntity {
+private fun CardDetailDto.asEntity(existing: CardEntity?, updatedAt: Long): CardEntity {
     val abilityText = abilities.joinToString("\n\n") { "${it.name} · ${it.effect}" }
     val attackText = attacks.joinToString("\n\n") { attack ->
         buildString {
@@ -155,10 +163,10 @@ private fun CardDetailDto.asEntity(isFavorite: Boolean, updatedAt: Long): CardEn
         number = localId,
         rarity = rarity,
         artist = illustrator,
-        imageUrl = image?.let { "$it/low.webp" }.orEmpty(),
-        largeImageUrl = image?.let { "$it/high.webp" }.orEmpty(),
+        imageUrl = image?.let { "$it/low.webp" } ?: existing?.imageUrl.orEmpty(),
+        largeImageUrl = image?.let { "$it/high.webp" } ?: existing?.largeImageUrl.orEmpty(),
         price = null,
-        isFavorite = isFavorite,
+        isFavorite = existing?.isFavorite ?: false,
         updatedAt = updatedAt,
     )
 }

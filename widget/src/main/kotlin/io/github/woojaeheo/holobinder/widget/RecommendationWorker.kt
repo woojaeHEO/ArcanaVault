@@ -16,6 +16,10 @@ import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import io.github.woojaeheo.holobinder.core.domain.GetRecommendedCardUseCase
+import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.TimeUnit
@@ -30,16 +34,19 @@ class RecommendationWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         if (!hasWidget(applicationContext)) return Result.success()
         return try {
+            currentCoroutineContext().ensureActive()
             val previous = RecommendationStore.read(applicationContext)
             val card = getRecommendedCard(previous?.cardId)
             if (card != null) {
+                currentCoroutineContext().ensureActive()
                 val image = cacheCardImage(applicationContext, card.id, card.imageUrl)
+                currentCoroutineContext().ensureActive()
                 RecommendationStore.write(applicationContext, card, System.currentTimeMillis(), image)
                 HoloBinderWidget().updateAll(applicationContext)
             }
             Result.success()
         } finally {
-            enqueueNext(applicationContext)
+            if (!isStopped && currentCoroutineContext().isActive) enqueueNext(applicationContext)
         }
     }
 
@@ -51,7 +58,11 @@ class RecommendationWorker @AssistedInject constructor(
             connection.instanceFollowRedirects = true
             connection.setRequestProperty("User-Agent", "HoloBinderWidget")
             try {
-                connection.inputStream.use { BitmapFactory.decodeStream(it) }
+                if (connection.responseCode !in 200..299) return@runCatching null
+                val length = connection.contentLengthLong
+                if (length > MAX_IMAGE_BYTES) return@runCatching null
+                val bytes = connection.inputStream.use(::readBoundedImage)
+                decodeSampledImage(bytes)
             } finally {
                 connection.disconnect()
             }
@@ -59,24 +70,58 @@ class RecommendationWorker @AssistedInject constructor(
             val width = CARD_IMAGE_WIDTH
             val height = (source.height * width.toFloat() / source.width).toInt().coerceAtLeast(1)
             val scaled = source.scale(width, height)
-            val target = RecommendationStore.imageFile(context, cardId)
-            val temporary = java.io.File(context.filesDir, "${target.name}.tmp")
-            temporary.outputStream().use {
-                scaled.compress(Bitmap.CompressFormat.PNG, IMAGE_QUALITY, it)
+            try {
+                val target = RecommendationStore.imageFile(context, cardId)
+                val temporary = java.io.File(context.filesDir, "${target.name}.tmp")
+                temporary.outputStream().use {
+                    check(scaled.compress(Bitmap.CompressFormat.PNG, IMAGE_QUALITY, it))
+                }
+                if (!temporary.renameTo(target)) {
+                    temporary.copyTo(target, overwrite = true)
+                    temporary.delete()
+                }
+                target
+            } finally {
+                if (scaled !== source) scaled.recycle()
+                source.recycle()
             }
-            if (!temporary.renameTo(target)) {
-                temporary.copyTo(target, overwrite = true)
-                temporary.delete()
-            }
-            if (scaled !== source) scaled.recycle()
-            source.recycle()
-            target
         }
+
+    private fun readBoundedImage(input: java.io.InputStream): ByteArray {
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var total = 0L
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            total += count
+            check(total <= MAX_IMAGE_BYTES) { "Widget image exceeds the size limit" }
+            output.write(buffer, 0, count)
+        }
+        return output.toByteArray()
+    }
+
+    private fun decodeSampledImage(bytes: ByteArray): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+        var sampleSize = 1
+        while (bounds.outWidth / sampleSize > MAX_DECODE_WIDTH * 2) {
+            sampleSize *= 2
+        }
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+            inPreferredConfig = Bitmap.Config.RGB_565
+        }
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+    }
 
     companion object {
         private const val WORK_NAME = "recommendation-widget-refresh"
         private const val NETWORK_TIMEOUT_MILLIS = 8_000
+        private const val MAX_IMAGE_BYTES = 8L * 1_024L * 1_024L
         private const val CARD_IMAGE_WIDTH = 180
+        private const val MAX_DECODE_WIDTH = 720
         private const val IMAGE_QUALITY = 92
         private const val REFRESH_MINUTES = 5L
 

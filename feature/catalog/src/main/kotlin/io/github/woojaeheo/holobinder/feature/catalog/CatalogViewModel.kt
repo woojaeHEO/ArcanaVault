@@ -51,6 +51,7 @@ class CatalogViewModel @Inject constructor(
     private val deckRepository: DeckRepository,
 ) : MviViewModel<CatalogAction, CatalogState, CatalogEffect>(CatalogState()) {
     private val filter = MutableStateFlow(CardFilter())
+    private var refreshGeneration = 0L
 
     private val cards = filter
         .debounce(250)
@@ -91,7 +92,10 @@ class CatalogViewModel @Inject constructor(
             }
             is CatalogAction.Select -> {
                 setState { copy(selectedCard = action.card) }
-                action.card?.let { card ->
+                if (action.card == null) {
+                    cancelIntent(DETAIL_JOB)
+                } else {
+                    val card = action.card
                     latestIntent(DETAIL_JOB) {
                         val result = cardRepository.refreshCard(card.id)
                         if (result is SyncResult.Error) {
@@ -127,8 +131,9 @@ class CatalogViewModel @Inject constructor(
 
     /** 이전 요청을 취소하고 최신 조건만 동기화 */
     private fun refresh(activeFilter: CardFilter, force: Boolean) {
+        val generation = ++refreshGeneration
         latestIntent(REFRESH_JOB) {
-            refreshFilter(activeFilter, force)
+            refreshFilter(activeFilter, force, generation)
         }
     }
 
@@ -138,13 +143,18 @@ class CatalogViewModel @Inject constructor(
         setState { copy(filter = updated) }
     }
 
-    private suspend fun refreshFilter(activeFilter: CardFilter, force: Boolean) {
+    private suspend fun refreshFilter(activeFilter: CardFilter, force: Boolean, generation: Long) {
         setState { copy(isRefreshing = true) }
-        when (val result = cardRepository.refresh(activeFilter, force)) {
-            SyncResult.Success -> Unit
-            is SyncResult.Error -> emitEffect(CatalogEffect.Message(result.message))
+        try {
+            when (val result = cardRepository.refresh(activeFilter, force)) {
+                SyncResult.Success -> Unit
+                is SyncResult.Error -> emitEffect(CatalogEffect.Message(result.message))
+            }
+        } finally {
+            if (generation == refreshGeneration) {
+                setState { copy(isRefreshing = false) }
+            }
         }
-        setState { copy(isRefreshing = false) }
     }
 
     private companion object {

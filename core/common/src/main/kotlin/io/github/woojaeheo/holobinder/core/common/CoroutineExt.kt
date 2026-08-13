@@ -4,7 +4,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,10 +27,6 @@ object DefaultCoroutineDispatchers : CoroutineDispatchers {
     override val io: CoroutineDispatcher = Dispatchers.IO
     override val default: CoroutineDispatcher = Dispatchers.Default
 }
-
-/** 독립 실패를 허용하는 Coroutine Scope */
-fun supervisedScope(dispatcher: CoroutineDispatcher = Dispatchers.Default): CoroutineScope =
-    CoroutineScope(SupervisorJob() + dispatcher)
 
 /** 입출력 작업 실행 */
 suspend inline fun <T> withIo(crossinline block: suspend () -> T): T =

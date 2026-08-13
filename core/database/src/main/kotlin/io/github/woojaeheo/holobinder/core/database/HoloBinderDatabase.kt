@@ -24,7 +24,6 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): HoloBinderDatabase =
         Room.databaseBuilder(context, HoloBinderDatabase::class.java, "holobinder.db")
-            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
 
     @Provides fun provideCardDao(database: HoloBinderDatabase): CardDao = database.cardDao()

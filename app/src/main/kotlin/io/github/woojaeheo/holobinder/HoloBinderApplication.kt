@@ -34,6 +34,12 @@ class HoloBinderApplication : Application(), Configuration.Provider, SingletonIm
             maxRequests = 32
             maxRequestsPerHost = 16
         }
+        val imageClient = OkHttpClient.Builder()
+            .dispatcher(networkDispatcher)
+            .connectionPool(ConnectionPool(16, 5, TimeUnit.MINUTES))
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
         return ImageLoader.Builder(context)
             .memoryCache {
                 MemoryCache.Builder()
@@ -49,14 +55,7 @@ class HoloBinderApplication : Application(), Configuration.Provider, SingletonIm
             .components {
                 add(
                     OkHttpNetworkFetcherFactory(
-                        callFactory = {
-                            OkHttpClient.Builder()
-                                .dispatcher(networkDispatcher)
-                                .connectionPool(ConnectionPool(16, 5, TimeUnit.MINUTES))
-                                .connectTimeout(10, TimeUnit.SECONDS)
-                                .readTimeout(15, TimeUnit.SECONDS)
-                                .build()
-                        },
+                        callFactory = { imageClient },
                     ),
                 )
             }

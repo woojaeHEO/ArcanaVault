@@ -26,4 +26,14 @@ class AsyncTest {
         assertEquals("ready", result)
         assertEquals(3, calls)
     }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `음수 재시도 지연을 거부한다`() = runTest {
+        retryWithBackoff(attempts = 1, initialDelayMillis = -1) { 1 }
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `최대 지연보다 큰 시작 지연을 거부한다`() = runTest {
+        retryWithBackoff(attempts = 1, initialDelayMillis = 2, maxDelayMillis = 1) { 1 }
+    }
 }

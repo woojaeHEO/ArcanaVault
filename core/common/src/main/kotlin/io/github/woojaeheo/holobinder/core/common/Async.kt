@@ -63,6 +63,8 @@ suspend fun <T> retryWithBackoff(
     block: suspend (attempt: Int) -> T,
 ): T {
     require(attempts > 0) { "attempts must be greater than zero" }
+    require(initialDelayMillis >= 0) { "initialDelayMillis must not be negative" }
+    require(maxDelayMillis >= initialDelayMillis) { "maxDelayMillis must not be smaller than initialDelayMillis" }
     var lastFailure: Throwable? = null
     repeat(attempts) { index ->
         try {
@@ -72,9 +74,17 @@ suspend fun <T> retryWithBackoff(
         } catch (throwable: Throwable) {
             lastFailure = throwable
             if (index == attempts - 1 || !retryWhen(throwable)) throw throwable
-            val exponential = initialDelayMillis * 2.0.pow(index).toLong()
+            val exponential = (initialDelayMillis.toDouble() * 2.0.pow(index))
+                .coerceAtMost(Long.MAX_VALUE.toDouble())
+                .toLong()
             val bounded = exponential.coerceAtMost(maxDelayMillis)
-            delay(Random.nextLong((bounded * .8).toLong(), bounded + 1))
+            val minimum = (bounded * .8).toLong()
+            val delayMillis = when {
+                minimum >= bounded -> bounded
+                bounded == Long.MAX_VALUE -> Random.nextLong(minimum, bounded)
+                else -> Random.nextLong(minimum, bounded + 1)
+            }
+            delay(delayMillis)
         }
     }
     throw checkNotNull(lastFailure)
