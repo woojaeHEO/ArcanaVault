@@ -77,6 +77,7 @@ import io.github.woojaeheo.prismglass.PrismGlassBackdropHost
 import io.github.woojaeheo.prismglass.PrismGlassBackdropSurface
 import io.github.woojaeheo.prismglass.PrismGlassDefaults
 import io.github.woojaeheo.prismglass.PrismGlassNavigationDefaults
+import io.github.woojaeheo.prismglass.PrismGlassOptics
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -204,8 +205,7 @@ private fun HoloBinderApp(
                 PrismGlassBackdropSurface(
                     state = backdrop,
                     style = surfaceStyle,
-                    blurRadius = 18.dp,
-                    refraction = .12f,
+                    optics = PrismGlassOptics(blurRadius = 18.dp, refraction = .12f),
                     clipContent = false,
                     modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
                         .padding(horizontal = 12.dp, vertical = 6.dp).fillMaxWidth().height(64.dp),
