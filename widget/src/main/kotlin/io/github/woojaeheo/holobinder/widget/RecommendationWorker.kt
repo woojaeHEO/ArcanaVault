@@ -20,6 +20,8 @@ import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.TimeUnit
@@ -39,7 +41,9 @@ class RecommendationWorker @AssistedInject constructor(
             val card = getRecommendedCard(previous?.cardId)
             if (card != null) {
                 currentCoroutineContext().ensureActive()
-                val image = cacheCardImage(applicationContext, card.id, card.imageUrl)
+                val image = withContext(Dispatchers.IO) {
+                    cacheCardImage(applicationContext, card.id, card.imageUrl)
+                }
                 currentCoroutineContext().ensureActive()
                 RecommendationStore.write(applicationContext, card, System.currentTimeMillis(), image)
                 HoloBinderWidget().updateAll(applicationContext)

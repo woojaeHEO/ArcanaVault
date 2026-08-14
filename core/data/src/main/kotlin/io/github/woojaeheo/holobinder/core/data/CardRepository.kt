@@ -58,7 +58,7 @@ class OfflineFirstCardRepository @Inject constructor(
                 type = filter.type,
                 category = filter.supertype,
             )
-            cardDao.upsertCards(
+            cardDao.upsertCardsPreservingFavorites(
                 cards.mapNotNull { summary ->
                     summary.asEntity(
                         existing = cardDao.card(summary.id),
@@ -81,7 +81,9 @@ class OfflineFirstCardRepository @Inject constructor(
     /** 선택된 카드만 고해상도 상세 정보로 갱신 */
     override suspend fun refreshCard(id: String): SyncResult = runSuspendCatching {
         val existing = cardDao.card(id)
-        cardDao.upsertCards(listOf(api.card(id).asEntity(existing, System.currentTimeMillis())))
+        cardDao.upsertCardsPreservingFavorites(
+            listOf(api.card(id).asEntity(existing, System.currentTimeMillis())),
+        )
     }.fold(
         onSuccess = { SyncResult.Success },
         onFailure = { SyncResult.Error(it.message ?: "상세 정보를 불러오지 못했습니다.") },

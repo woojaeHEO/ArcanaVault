@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -120,8 +121,11 @@ abstract class MviViewModel<Action : Any, State : Any, Effect : Any>(
     }
 
     final override fun onAction(action: Action) {
-        if (actionChannel.trySend(action).isFailure) {
-            viewModelScope.launch { actionChannel.send(action) }
+        val result = actionChannel.trySend(action)
+        if (result.isFailure && !result.isClosed) {
+            viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                actionChannel.send(action)
+            }
         }
     }
 

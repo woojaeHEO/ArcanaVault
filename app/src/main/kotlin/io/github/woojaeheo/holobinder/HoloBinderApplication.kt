@@ -43,7 +43,7 @@ class HoloBinderApplication : Application(), Configuration.Provider, SingletonIm
         return ImageLoader.Builder(context)
             .memoryCache {
                 MemoryCache.Builder()
-                    .maxSizePercent(context, .20)
+                    .maxSizeBytes(64L * 1_024L * 1_024L)
                     .build()
             }
             .diskCache {

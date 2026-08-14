@@ -32,6 +32,17 @@ interface CardDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertCards(cards: List<CardEntity>)
 
+    @Query("SELECT id FROM cards WHERE isFavorite = 1 AND id IN (:ids)")
+    suspend fun favoriteIds(ids: List<String>): List<String>
+
+    /** 네트워크 저장 중 변경된 즐겨찾기 상태 보존 */
+    @Transaction
+    suspend fun upsertCardsPreservingFavorites(cards: List<CardEntity>) {
+        if (cards.isEmpty()) return
+        val favoriteIds = favoriteIds(cards.map(CardEntity::id)).toHashSet()
+        upsertCards(cards.map { card -> card.copy(isFavorite = card.id in favoriteIds) })
+    }
+
     @Query("UPDATE cards SET isFavorite = NOT isFavorite WHERE id = :id")
     suspend fun toggleFavorite(id: String)
 
